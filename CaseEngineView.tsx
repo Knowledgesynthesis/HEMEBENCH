@@ -1,404 +1,194 @@
-import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './Card'
+import { useEffect, useRef, useState } from 'react'
+import { create } from 'zustand'
+import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import { ArrowLeft, ChevronRight, CheckCircle } from 'lucide-react'
-import { useAppStore } from './store'
-import type { DiagnosticCase } from './types'
+import { caseWorkups } from './caseWorkups'
+import { readSaved, save, useAppStore } from './store'
 
-const sampleCases: DiagnosticCase[] = [
-  {
-    id: 'case1',
-    title: 'Iron Deficiency Anemia',
-    clinicalContext: 'Outpatient clinic',
-    age: 32,
-    sex: 'F',
-    presentation: '32yo woman with fatigue, heavy menstrual periods. Craves ice.',
-    cbc: {
-      wbc: 7.2,
-      rbc: 3.8,
-      hgb: 9.5,
-      hct: 30,
-      mcv: 72,
-      mch: 24,
-      mchc: 31,
-      rdw: 18,
-      platelets: 420,
-      neutrophils: 65,
-      lymphocytes: 28,
-      monocytes: 5,
-      eosinophils: 2,
-      basophils: 0,
-      reticulocytes: 0.8,
-    },
-    smear: {
-      rbcMorphology: ['Microcytosis', 'Hypochromia', 'Anisopoikilocytosis', 'Occasional pencil cells'],
-      wbcMorphology: ['Normal'],
-      plateletMorphology: ['Mild thrombocytosis'],
-      overallImpression: 'Microcytic hypochromic anemia',
-      keyFindings: ['Microcytosis', 'Elevated RDW', 'Thrombocytosis'],
-    },
-    diagnosis: 'Iron deficiency anemia',
-    mechanism: 'Chronic blood loss (menorrhagia) → iron depletion → impaired hemoglobin synthesis → microcytic anemia',
-    keyFeatures: [
-      'Microcytic hypochromic anemia (MCV <80, low MCHC)',
-      'Elevated RDW (anisocytosis)',
-      'Thrombocytosis (reactive)',
-      'Low reticulocyte count (hypoproliferative)',
-    ],
-    differentialDx: [
-      'Thalassemia trait (RBC count usually normal/high, RDW normal)',
-      'Anemia of chronic disease (ferritin elevated, TIBC normal/low)',
-      'Sideroblastic anemia (ring sideroblasts on marrow)',
-    ],
-    managementPoints: [
-      'Check iron studies: ↓ferritin, ↓serum iron, ↑TIBC, ↓saturation',
-      'Investigate source of bleeding (GI evaluation if not explained by menses)',
-      'Oral iron supplementation',
-      'Recheck CBC in 2-3 months',
-    ],
-    educationalLevel: 'MS3',
-  },
-  {
-    id: 'case2',
-    title: 'Acute Promyelocytic Leukemia (APL)',
-    clinicalContext: 'Emergency department',
-    age: 45,
-    sex: 'M',
-    presentation: '45yo man with gingival bleeding, bruising, fatigue. DIC labs abnormal.',
-    cbc: {
-      wbc: 3.2,
-      rbc: 2.5,
-      hgb: 7.8,
-      hct: 24,
-      mcv: 88,
-      mch: 30,
-      mchc: 33,
-      rdw: 14,
-      platelets: 22,
-      neutrophils: 15,
-      lymphocytes: 20,
-      monocytes: 5,
-      eosinophils: 1,
-      basophils: 0,
-      reticulocytes: 1.2,
-    },
-    smear: {
-      rbcMorphology: ['Normocytic'],
-      wbcMorphology: ['Abnormal promyelocytes with heavy granulation', 'Auer rods (bundles)', 'Bilobed nuclei'],
-      plateletMorphology: ['Severe thrombocytopenia'],
-      overallImpression: 'Abnormal promyelocytes consistent with APL',
-      keyFindings: ['Auer rods', 'Heavy granulation', 'DIC', 'Pancytopenia'],
-    },
-    coagulation: {
-      pt: 18,
-      ptt: 45,
-      inr: 1.8,
-      fibrinogen: 95,
-      dDimer: 8500,
-      plateletCount: 22,
-    },
-    flow: {
-      markers: [
-        { name: 'CD34', cd: 'CD34', positive: false },
-        { name: 'CD33', cd: 'CD33', positive: true, intensity: 'bright' },
-        { name: 'MPO', cd: 'MPO', positive: true, intensity: 'bright' },
-        { name: 'CD117', cd: 'CD117', positive: false },
-      ],
-      lineage: 'myeloid',
-      maturation: 'Promyelocytic',
-    },
-    molecular: [
-      {
-        gene: 'PML-RARA',
-        mutation: 't(15;17)',
-        classification: 'driver',
-        significance: 'Diagnostic for APL. Responsive to ATRA.',
-      },
-    ],
-    diagnosis: 'Acute Promyelocytic Leukemia (APL, AML-M3)',
-    mechanism: 't(15;17) PML-RARA → maturation block at promyelocyte stage → release of procoagulant granules → DIC',
-    keyFeatures: [
-      'Abnormal promyelocytes with Auer rods',
-      'DIC (↓fibrinogen, ↑D-dimer, ↓platelets)',
-      't(15;17) PML-RARA',
-      'CD34 negative (unlike most AML)',
-    ],
-    differentialDx: [
-      'AML M2 (Auer rods but mature myeloblasts)',
-      'AML M4/M5 (monocytic features)',
-    ],
-    managementPoints: [
-      'MEDICAL EMERGENCY - high risk of fatal bleeding',
-      'Start ATRA immediately (even before confirmation)',
-      'Add arsenic trioxide (ATO)',
-      'Support with platelets, cryoprecipitate',
-      'Monitor for differentiation syndrome',
-    ],
-    educationalLevel: 'Fellow',
-  },
-  {
-    id: 'case3',
-    title: 'Polycythemia Vera',
-    clinicalContext: 'Hematology clinic',
-    age: 58,
-    sex: 'M',
-    presentation: '58yo man with headaches, pruritus after hot showers, plethora. Incidental elevated Hgb.',
-    cbc: {
-      wbc: 12.5,
-      rbc: 6.8,
-      hgb: 19.2,
-      hct: 58,
-      mcv: 86,
-      mch: 28,
-      mchc: 33,
-      rdw: 13,
-      platelets: 520,
-      neutrophils: 70,
-      lymphocytes: 22,
-      monocytes: 6,
-      eosinophils: 2,
-      basophils: 0,
-    },
-    smear: {
-      rbcMorphology: ['Polychromasia'],
-      wbcMorphology: ['Mild leukocytosis', 'Left shift'],
-      plateletMorphology: ['Thrombocytosis'],
-      overallImpression: 'Erythrocytosis with thrombocytosis',
-      keyFindings: ['Elevated RBC mass', 'Thrombocytosis', 'Leukocytosis'],
-    },
-    molecular: [
-      {
-        gene: 'JAK2',
-        mutation: 'V617F',
-        vaf: 52,
-        classification: 'driver',
-        significance: 'Diagnostic for myeloproliferative neoplasm. Found in >95% of PV.',
-      },
-    ],
-    diagnosis: 'Polycythemia Vera',
-    mechanism: 'JAK2 V617F mutation → constitutive JAK-STAT activation → erythropoietin-independent erythropoiesis',
-    keyFeatures: [
-      'Elevated Hgb/Hct (Hgb >16.5 in men, >16 in women)',
-      'JAK2 V617F mutation (>95%)',
-      'Trilineage proliferation (RBC, WBC, platelets)',
-      'Pruritus (histamine from basophils)',
-    ],
-    differentialDx: [
-      'Secondary erythrocytosis (↑EPO, normal spleen, no JAK2)',
-      'Essential thrombocythemia (platelets predominate)',
-      'Relative polycythemia (dehydration)',
-    ],
-    managementPoints: [
-      'Phlebotomy to keep Hct <45% (men) or <42% (women)',
-      'Low-dose aspirin (if no contraindication)',
-      'Hydroxyurea for high-risk patients',
-      'Ruxolitinib if refractory',
-      'Monitor for thrombosis and transformation to MF/AML',
-    ],
-    educationalLevel: 'Resident',
-  },
-]
+function savedCases() {
+  return caseWorkups.filter(item => readSaved('case.' + item.id) === true).map(item => item.id)
+}
+
+const useCaseHistory = create<{ completed: string[] }>(() => ({ completed: savedCases() }))
+
+function updateCaseHistory(id?: string) {
+  if (id) save('case.' + id, true)
+  const completed = new Set([...useCaseHistory.getState().completed, ...savedCases()])
+  if (id) completed.add(id)
+  if (completed.size !== useCaseHistory.getState().completed.length) {
+    useCaseHistory.setState({ completed: [...completed] })
+  }
+  const app = useAppStore.getState()
+  if (completed.size === caseWorkups.length && !app.completedModules.includes('case-engine')) {
+    app.markModuleComplete('case-engine')
+  }
+}
+
+// Reconcile a saved final case if the previous session closed before writing the module check.
+updateCaseHistory()
+window.addEventListener('storage', event => {
+  if (event.key === null) useCaseHistory.setState({ completed: savedCases() })
+  else updateCaseHistory()
+})
 
 export function CaseEngineView() {
-  const setCurrentView = useAppStore((state) => state.setCurrentView)
-  const [selectedCase, setSelectedCase] = useState<DiagnosticCase | null>(null)
-  const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
+  const setCurrentView = useAppStore((s) => s.setCurrentView)
+  const completedCases = useCaseHistory((s) => s.completed)
+  const showHints = useAppStore((s) => s.showHints)
+  const [caseIndex, setCaseIndex] = useState<number | null>(null)
+  const [step, setStep] = useState(0)
+  const [answer, setAnswer] = useState<number | null>(null)
+  const questionHeading = useRef<HTMLHeadingElement>(null)
+  const listHeading = useRef<HTMLHeadingElement>(null)
+  const hasOpenedCase = useRef(false)
+  const workup = caseIndex === null ? undefined : caseWorkups[caseIndex]
+  const decision = workup?.decisions[step]
+  const correct = decision !== undefined && answer === decision.correct
 
-  const revealSection = (section: string) => {
-    setRevealedSections((prev) => new Set(prev).add(section))
+  useEffect(() => {
+    if (caseIndex !== null) {
+      questionHeading.current?.focus({ preventScroll: step === 0 })
+      if (step === 0) window.scrollTo(0, 0)
+    } else if (hasOpenedCase.current) {
+      listHeading.current?.focus()
+    }
+  }, [caseIndex, step])
+
+  function openCase(index: number | null) {
+    if (index !== null) hasOpenedCase.current = true
+    setStep(0)
+    setAnswer(null)
+    setCaseIndex(index)
   }
 
-  const resetCase = () => {
-    setRevealedSections(new Set())
+  function choose(index: number) {
+    if (!workup || !decision || correct) return
+    setAnswer(index)
+    if (index === decision.correct && step === workup.decisions.length - 1) {
+      updateCaseHistory(workup.id)
+    }
   }
 
   return (
-    <div className="space-y-4 p-4 pb-24 md:pb-6 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => setCurrentView('home')}>
-          <ArrowLeft size={16} className="mr-2" />
-          Back
-        </Button>
-        <div>
-          <h2 className="text-2xl font-bold">Integrated Case Engine</h2>
-          <p className="text-sm text-muted-foreground">
-            Full diagnostic workups
-          </p>
-        </div>
-      </div>
+    <div className="mx-auto max-w-4xl space-y-5 p-4 md:p-6">
+      <Button size="sm" variant="ghost" onClick={() => workup ? openCase(null) : setCurrentView('home')}>
+        <ArrowLeft size={16} className="mr-2" /> {workup ? 'All cases' : 'Home'}
+      </Button>
 
-      {!selectedCase ? (
-        <div className="grid gap-4">
-          {sampleCases.map((caseItem) => (
-            <Card
-              key={caseItem.id}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setSelectedCase(caseItem)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{caseItem.title}</CardTitle>
-                    <CardDescription className="mt-1">
-                      {caseItem.presentation}
-                    </CardDescription>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs px-2 py-1 bg-accent rounded">
-                      {caseItem.educationalLevel}
-                    </span>
-                    <ChevronRight size={20} className="text-muted-foreground" />
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSelectedCase(null)
-                resetCase()
-              }}
-            >
-              ← Back to Cases
-            </Button>
-            <Button size="sm" variant="outline" onClick={resetCase}>
-              Reset Case
-            </Button>
+      {!workup ? (
+        <>
+          <header className="space-y-2">
+            <h1 className="text-3xl font-semibold" ref={listHeading} tabIndex={-1}>Integrated cases</h1>
+            <p className="text-muted-foreground">Use the patient record to make three decisions. Complete all three workups to finish this module.</p>
+            <p className="text-sm font-semibold text-primary">{completedCases.length} of {caseWorkups.length} cases complete</p>
+          </header>
+          <div className="grid gap-3">
+            {caseWorkups.map((item, index) => (
+              <button
+                key={item.title}
+                className="flex w-full items-center justify-between gap-4 rounded-lg border bg-card p-5 text-left shadow-sm transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => openCase(index)}
+              >
+                <span>
+                  <span className="block text-xs font-medium text-muted-foreground">{item.setting}</span>
+                  <span className="mt-1 block text-lg font-semibold">{item.title}</span>
+                </span>
+                {completedCases.includes(item.id) && <span className="ml-auto text-xs font-semibold text-primary">Completed</span>}
+                <ArrowRight size={18} className="shrink-0 text-primary" aria-hidden="true" />
+              </button>
+            ))}
           </div>
+        </>
+      ) : (
+        <>
+          <header className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">{workup.setting}</p>
+            <h1 className="text-3xl font-semibold">{workup.title}</h1>
+            <p>{workup.presentation}</p>
+          </header>
 
           <Card>
-            <CardHeader>
-              <CardTitle>{selectedCase.title}</CardTitle>
-              <CardDescription>
-                {selectedCase.age}yo {selectedCase.sex === 'M' ? 'Male' : 'Female'} • {selectedCase.clinicalContext}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">{selectedCase.presentation}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">CBC Results</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                <div>WBC: {selectedCase.cbc.wbc}</div>
-                <div>RBC: {selectedCase.cbc.rbc}</div>
-                <div>Hgb: {selectedCase.cbc.hgb}</div>
-                <div>Hct: {selectedCase.cbc.hct}</div>
-                <div>MCV: {selectedCase.cbc.mcv}</div>
-                <div>RDW: {selectedCase.cbc.rdw}</div>
-                <div>Platelets: {selectedCase.cbc.platelets}</div>
-                <div>Retic: {selectedCase.cbc.reticulocytes}</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Smear Findings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div>
-                <strong>RBC:</strong> {selectedCase.smear.rbcMorphology.join(', ')}
-              </div>
-              <div>
-                <strong>WBC:</strong> {selectedCase.smear.wbcMorphology.join(', ')}
-              </div>
-              <div>
-                <strong>Platelets:</strong> {selectedCase.smear.plateletMorphology.join(', ')}
-              </div>
-            </CardContent>
-          </Card>
-
-          {selectedCase.coagulation && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Coagulation Panel</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                <div>PT: {selectedCase.coagulation.pt}s</div>
-                <div>PTT: {selectedCase.coagulation.ptt}s</div>
-                <div>Fibrinogen: {selectedCase.coagulation.fibrinogen}</div>
-                <div>D-dimer: {selectedCase.coagulation.dDimer}</div>
-              </CardContent>
-            </Card>
-          )}
-
-          {selectedCase.molecular && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Molecular Testing</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {selectedCase.molecular.map((m) => (
-                  <div key={m.gene}>
-                    <strong>{m.gene}:</strong> {m.mutation} - {m.significance}
+            <CardHeader><CardTitle className="text-lg">Patient record</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {workup.labs.map(([name, value]) => (
+                  <div key={name} className="min-w-0">
+                    <dt className="text-xs text-muted-foreground">{name}</dt>
+                    <dd className="mt-1 text-sm font-semibold">{value}</dd>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
-          )}
+              </dl>
+              <p className="border-t pt-3 text-sm"><strong>Blood film. </strong>{workup.smear}</p>
+              {workup.decisions.slice(0, step + 1).map((item) => item.finding && (
+                <p className="border-t pt-3 text-sm" key={item.prompt}>{item.finding}</p>
+              ))}
+            </CardContent>
+          </Card>
 
-          {!revealedSections.has('diagnosis') ? (
-            <Button
-              onClick={() => revealSection('diagnosis')}
-              className="w-full"
-            >
-              Reveal Diagnosis
-            </Button>
+          {decision ? (
+            <section key={decision.prompt} className="space-y-4 rounded-lg border bg-card p-5 sm:p-6">
+              <p className="text-xs font-semibold text-primary">Decision {step + 1} of {workup.decisions.length}</p>
+              <h2 className="text-xl font-semibold" tabIndex={-1} ref={questionHeading}>{decision.prompt}</h2>
+              {showHints && (
+                <details className="text-sm text-muted-foreground">
+                  <summary className="w-fit cursor-pointer font-medium text-foreground">Hint</summary>
+                  <p className="mt-2">{decision.hint}</p>
+                </details>
+              )}
+              <div className="grid gap-2">
+                {decision.options.map((option, index) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    aria-pressed={index === answer}
+                    disabled={correct}
+                    onClick={() => choose(index)}
+                    className={'rounded-md border px-4 py-3 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring ' + (index === answer ? 'border-primary bg-accent' : 'bg-background enabled:hover:bg-accent')}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <div aria-live="polite" aria-atomic="true">
+                {answer !== null && (
+                  <div className="space-y-2 border-l-2 border-primary pl-4 text-sm">
+                    <p className="font-semibold">{correct ? 'Correct' : 'Try another answer'}</p>
+                    <p>{decision.options[answer].feedback}</p>
+                    <a href={decision.source.url} target="_blank" rel="noreferrer" className="inline-block text-primary underline">{decision.source.title}</a>
+                  </div>
+                )}
+              </div>
+              {correct && (
+                <Button onClick={() => { setAnswer(null); setStep(step + 1) }}>
+                  {step === workup.decisions.length - 1 ? 'Review case' : 'Continue workup'}
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              )}
+            </section>
           ) : (
-            <Card className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border-primary/20">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-6 h-6 text-green-400" />
-                  <CardTitle className="text-lg">Diagnosis</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <strong className="text-base">{selectedCase.diagnosis}</strong>
-                </div>
-                <div>
-                  <strong className="text-sm">Mechanism:</strong>
-                  <p className="text-sm text-muted-foreground">{selectedCase.mechanism}</p>
-                </div>
-                <div>
-                  <strong className="text-sm">Key Features:</strong>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    {selectedCase.keyFeatures.map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <strong className="text-sm">Differential:</strong>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    {selectedCase.differentialDx.map((d, i) => (
-                      <li key={i}>{d}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <strong className="text-sm">Management:</strong>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    {selectedCase.managementPoints.map((m, i) => (
-                      <li key={i}>{m}</li>
-                    ))}
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
+            <section className="space-y-3 rounded-lg border bg-card p-6">
+              <p className="flex items-center gap-2 text-sm font-semibold text-primary"><CheckCircle2 size={17} /> Case complete</p>
+              <h2 className="text-xl font-semibold" ref={questionHeading} tabIndex={-1}>{workup.diagnosis}</h2>
+              <p>{workup.synthesis}</p>
+              <details className="text-sm">
+                <summary className="w-fit cursor-pointer font-medium">Review the three decisions and sources</summary>
+                <ol className="mt-3 list-decimal space-y-3 pl-5">
+                  {workup.decisions.map((item) => (
+                    <li key={item.prompt}>
+                      <strong>{item.options[item.correct].label}.</strong> {item.options[item.correct].feedback}{' '}
+                      <a href={item.source.url} target="_blank" rel="noreferrer" className="text-primary underline">{item.source.title}</a>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button onClick={() => openCase(null)}>Choose another case</Button>
+                <Button variant="outline" onClick={() => openCase(caseIndex)}>Repeat case</Button>
+              </div>
+            </section>
           )}
-        </div>
+        </>
       )}
     </div>
   )

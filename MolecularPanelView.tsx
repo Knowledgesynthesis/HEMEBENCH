@@ -1,252 +1,98 @@
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './Card'
+import { Card, CardContent } from './Card'
 import { Button } from './Button'
-import { ArrowLeft, AlertCircle } from 'lucide-react'
-import { useAppStore } from './store'
+import { LabHeader, LabPractice, LabSources, ReferenceHeading, type LabCase, type LabSource } from './LabPractice'
 
-interface Mutation {
-  gene: string
-  fullName: string
-  disease: string[]
-  pathway: string
-  prognostic: 'Favorable' | 'Intermediate' | 'Poor' | 'Variable'
-  clinicalSignificance: string
-  treatmentImplications: string
-}
+const eln = { title: 'ELN 2022 AML recommendations · Table 6', url: 'https://doi.org/10.1182/blood.2022016867' }
+const lessIntensive = { title: 'ELN 2024 less-intensive AML framework', url: 'https://pubmed.ncbi.nlm.nih.gov/39133932/' }
+const mpn = { title: 'ICC · Myeloproliferative neoplasms', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9852206/' }
+const who = { title: 'WHO 5th edition · Myeloid neoplasms', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9252913/' }
+const wm = { title: 'Waldenström macroglobulinemia · Diagnostic update', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC10249724/' }
+const hcl = { title: 'Hairy cell leukemia · 2026 consensus', url: 'https://ashpublications.org/blood/article/148/1/31/567757/Updated-consensus-guidelines-for-the-diagnosis-and' }
+const cml = { title: 'ELN 2025 CML recommendations', url: 'https://doi.org/10.1038/s41375-025-02664-w' }
 
-const mutations: Mutation[] = [
+const cases: LabCase[] = [
   {
-    gene: 'JAK2 V617F',
-    fullName: 'JAK2 exon 14 mutation',
-    disease: ['Polycythemia vera (95%)', 'Essential thrombocythemia (50%)', 'Primary myelofibrosis (50%)'],
-    pathway: 'JAK-STAT signaling',
-    prognostic: 'Variable',
-    clinicalSignificance: 'Diagnostic for myeloproliferative neoplasms. Near-universal in PV.',
-    treatmentImplications: 'Ruxolitinib (JAK1/2 inhibitor) for high-risk MPN',
+    title: 'Two variants in newly diagnosed AML',
+    history: 'An adult with newly diagnosed acute myeloid leukemia (AML) will receive intensive induction. The team requests the baseline genetic risk group under ELN 2022.',
+    report: [['NPM1', 'Pathogenic mutation detected'], ['FLT3', 'Internal tandem duplication (ITD) detected'], ['Karyotype', 'Normal'], ['Remaining panel', 'No adverse-risk abnormalities']],
+    question: 'Which ELN 2022 group fits this genotype?',
+    options: [
+      { label: 'Favorable', feedback: 'NPM1-mutated AML can fall in the favorable group when FLT3-ITD is absent and there are no adverse-risk cytogenetic abnormalities.' },
+      { label: 'Adverse', feedback: 'FLT3-ITD alone does not assign ELN 2022 adverse risk. Check the rest of the genetic profile.' },
+      { label: 'Intermediate', feedback: 'NPM1 mutation with FLT3-ITD fits the intermediate group here, regardless of FLT3-ITD allelic ratio. ELN published a separate framework for less-intensive therapy.' },
+    ], correct: 2, hint: 'Read the NPM1 and FLT3 results together, then check cytogenetics and the intended treatment.', sources: [eln, lessIntensive],
   },
   {
-    gene: 'BCR-ABL1',
-    fullName: 't(9;22) Philadelphia chromosome',
-    disease: ['Chronic myeloid leukemia (95%)', 'B-ALL (20-30%)', 'AML (rare)'],
-    pathway: 'Tyrosine kinase activation',
-    prognostic: 'Poor',
-    clinicalSignificance: 'Defines CML. Constitutive tyrosine kinase activity.',
-    treatmentImplications: 'Imatinib, dasatinib, nilotinib (TKIs)',
+    title: 'A driver mutation with thrombocytosis',
+    history: 'An adult has sustained thrombocytosis and no evident reactive cause. Essential thrombocythemia (ET) and prefibrotic primary myelofibrosis (pre-PMF) are under consideration.',
+    report: [['Platelets', '745 × 10⁹/L'], ['JAK2 V617F', 'Detected'], ['BCR::ABL1', 'Absent']],
+    question: 'Which finding best helps distinguish ET from pre-PMF?',
+    options: [
+      { label: 'Marrow morphology, including megakaryocyte architecture', feedback: 'Both diseases can carry JAK2 V617F. Review megakaryocyte atypia and clustering, cellularity, granulocytic proliferation and fibrosis together with the clinical findings.' },
+      { label: 'The presence of JAK2 V617F by itself', feedback: 'The same driver occurs in ET, pre-PMF and polycythemia vera. Its presence does not select a subtype.' },
+      { label: 'A platelet count above 450 × 10⁹/L by itself', feedback: 'This count meets the platelet criterion for ET, but both ET and pre-PMF can cause sustained thrombocytosis.' },
+    ], correct: 0, hint: 'Look for a test that can distinguish two diseases sharing the same driver.', sources: [mpn],
   },
   {
-    gene: 'FLT3-ITD',
-    fullName: 'FLT3 internal tandem duplication',
-    disease: ['AML (25-30%)'],
-    pathway: 'Receptor tyrosine kinase',
-    prognostic: 'Poor',
-    clinicalSignificance: 'Associated with leukocytosis, normal karyotype AML. Poor prognosis, high relapse.',
-    treatmentImplications: 'Midostaurin, gilteritinib (FLT3 inhibitors)',
+    title: 'An IgM monoclonal protein',
+    history: 'Serum immunofixation identifies a monoclonal IgM. A molecular test detects MYD88 L265P, and the marrow has yet to be examined.',
+    report: [['Serum', 'Monoclonal IgM kappa'], ['MYD88 L265P', 'Detected'], ['Marrow morphology', 'Pending']],
+    question: 'Which interpretation can the laboratory support?',
+    options: [
+      { label: 'The mutation confirms Waldenström macroglobulinemia', feedback: 'MYD88 L265P also occurs in IgM monoclonal gammopathy of undetermined significance (MGUS) and other B-cell disorders.' },
+      { label: 'Assess for marrow lymphoplasmacytic lymphoma', feedback: 'The mutation supports the possibility of lymphoplasmacytic lymphoma. Marrow findings together with monoclonal IgM help distinguish Waldenström macroglobulinemia from IgM MGUS.' },
+      { label: 'The patient has symptomatic disease requiring treatment', feedback: 'A molecular result alone establishes neither symptom attribution nor an indication for treatment.' },
+    ], correct: 1, hint: 'Which result would establish the underlying tissue diagnosis?', sources: [wm],
   },
   {
-    gene: 'NPM1',
-    fullName: 'Nucleophosmin 1',
-    disease: ['AML (30%)'],
-    pathway: 'Nucleocytoplasmic transport',
-    prognostic: 'Favorable',
-    clinicalSignificance: 'Most common AML mutation. Normal karyotype. Favorable if isolated.',
-    treatmentImplications: 'Standard chemotherapy; good response',
-  },
-  {
-    gene: 'CALR',
-    fullName: 'Calreticulin',
-    disease: ['Essential thrombocythemia (25%)', 'Primary myelofibrosis (25%)'],
-    pathway: 'ER chaperone, JAK-STAT activation',
-    prognostic: 'Favorable',
-    clinicalSignificance: 'Mutually exclusive with JAK2. Better prognosis than JAK2 in ET/PMF.',
-    treatmentImplications: 'Standard MPN management',
-  },
-  {
-    gene: 'MPL',
-    fullName: 'Thrombopoietin receptor',
-    disease: ['Essential thrombocythemia (5%)', 'Primary myelofibrosis (10%)'],
-    pathway: 'JAK-STAT signaling',
-    prognostic: 'Variable',
-    clinicalSignificance: 'Activates JAK-STAT. Rare in MPNs.',
-    treatmentImplications: 'Standard MPN management',
-  },
-  {
-    gene: 'TP53',
-    fullName: 'Tumor protein p53',
-    disease: ['AML', 'MDS', 'ALL', 'Many solid tumors'],
-    pathway: 'Cell cycle checkpoint, apoptosis',
-    prognostic: 'Poor',
-    clinicalSignificance: 'Therapy-related AML/MDS. Complex karyotype. Very poor prognosis.',
-    treatmentImplications: 'Often chemo-resistant; consider allogeneic transplant',
-  },
-  {
-    gene: 'MYD88 L265P',
-    fullName: 'Myeloid differentiation primary response 88',
-    disease: ['Waldenström macroglobulinemia (>90%)', 'ABC-DLBCL'],
-    pathway: 'NF-κB signaling',
-    prognostic: 'Variable',
-    clinicalSignificance: 'Diagnostic for Waldenström. Activates NF-κB.',
-    treatmentImplications: 'BTK inhibitors (ibrutinib)',
-  },
-  {
-    gene: 'BRAF V600E',
-    fullName: 'B-Raf proto-oncogene',
-    disease: ['Hairy cell leukemia (100%)', 'Melanoma', 'Langerhans cell histiocytosis'],
-    pathway: 'MAPK/ERK signaling',
-    prognostic: 'Variable',
-    clinicalSignificance: 'Diagnostic for hairy cell leukemia.',
-    treatmentImplications: 'Vemurafenib (BRAF inhibitor)',
-  },
-  {
-    gene: 'SF3B1',
-    fullName: 'Splicing factor 3B subunit 1',
-    disease: ['MDS with ring sideroblasts', 'CLL'],
-    pathway: 'RNA splicing',
-    prognostic: 'Favorable',
-    clinicalSignificance: 'Associated with ring sideroblasts. Better prognosis in MDS.',
-    treatmentImplications: 'Luspatercept for MDS with ring sideroblasts',
+    title: 'Following a CML clone during therapy',
+    history: 'An adult with chronic-phase chronic myeloid leukemia (CML) starts a BCR::ABL1 tyrosine kinase inhibitor. The diagnostic sample expressed a standard e14a2 transcript.',
+    report: [['Diagnostic fusion', 'BCR::ABL1 e14a2'], ['Follow-up CBC', 'Counts within reference intervals']],
+    question: 'Which test measures the depth of molecular response?',
+    options: [
+      { label: 'A repeat CBC alone', feedback: 'Counts measure hematologic response. Detectable fusion transcripts may persist after counts normalize.' },
+      { label: 'A qualitative fusion result reported as present or absent', feedback: 'A qualitative result does not give the level needed to assess molecular response milestones.' },
+      { label: 'Quantitative BCR::ABL1 on the International Scale', feedback: 'For a standard transcript, a validated quantitative assay on peripheral blood tracks BCR::ABL1 over time. The baseline transcript type guides assay selection.' },
+    ], correct: 2, hint: 'The monitoring test must quantify the same transcript identified at diagnosis.', sources: [cml],
   },
 ]
 
+interface Variant {
+  gene: string
+  categories: string[]
+  meaning: string
+  next: string
+  sources: LabSource[]
+}
+const variants: Variant[] = [
+  { gene: 'JAK2 V617F', categories: ['MPN'], meaning: 'This driver occurs in polycythemia vera, essential thrombocythemia and primary myelofibrosis.', next: 'Use the blood-count pattern, marrow morphology and disease-specific criteria to classify the neoplasm.', sources: [mpn] },
+  { gene: 'CALR', categories: ['MPN'], meaning: 'A pathogenic CALR exon 9 frameshift supports clonality in essential thrombocythemia or primary myelofibrosis.', next: 'Compare marrow megakaryocytes and fibrosis with the CBC and clinical findings to distinguish the subtypes.', sources: [mpn] },
+  { gene: 'MPL', categories: ['MPN'], meaning: 'An activating MPL variant can support a clonal myeloproliferative neoplasm in persistent thrombocytosis.', next: 'Check the precise variant and integrate the marrow findings. Essential thrombocythemia and primary myelofibrosis can share this driver.', sources: [mpn] },
+  { gene: 'BCR::ABL1', categories: ['CML', 'ALL', 'AML'], meaning: 'This fusion is the hallmark of CML. It also occurs in B-lymphoblastic leukemia and rarely in AML.', next: 'Use clinical history, blast lineage and cytogenetics to classify the disease. In CML, record the transcript type for molecular monitoring.', sources: [cml, eln] },
+  { gene: 'FLT3-ITD', categories: ['AML'], meaning: 'An internal tandem duplication can affect AML genetic risk and eligibility for FLT3-directed therapy.', next: 'Specify FLT3-ITD, coexisting lesions and the applicable treatment framework. In ELN 2022, NPM1-mutated AML with FLT3-ITD and no adverse cytogenetics is intermediate risk.', sources: [eln, lessIntensive] },
+  { gene: 'NPM1', categories: ['AML'], meaning: 'A pathogenic NPM1 mutation can define an AML entity. In intensively treated AML, baseline risk also depends on FLT3-ITD and adverse cytogenetics.', next: 'Read the full karyotype and FLT3 result together. NPM1-mutated AML with adverse cytogenetics is adverse risk under ELN 2022.', sources: [who, eln] },
+  { gene: 'TP53', categories: ['AML', 'MDS'], meaning: 'TP53 abnormalities carry different diagnostic criteria across AML and myelodysplastic neoplasms (MDS). WHO recognizes MDS with biallelic TP53 inactivation.', next: 'Review pathogenicity, variant allele fraction, copy-number status and karyotype. A single reported variant does not establish biallelic inactivation.', sources: [who, eln] },
+  { gene: 'SF3B1', categories: ['MDS'], meaning: 'WHO recognizes MDS with low blasts and SF3B1 mutation. Ring sideroblasts are a common morphologic clue.', next: 'Check persistent cytopenia, blast count, cytogenetic exclusions and competing defining lesions before assigning this subtype.', sources: [who] },
+  { gene: 'MYD88 L265P', categories: ['Mature B cell'], meaning: 'This variant commonly occurs in lymphoplasmacytic lymphoma and can also occur in IgM MGUS.', next: 'Correlate marrow histology and immunophenotype with serum studies. A positive result alone cannot establish Waldenström macroglobulinemia.', sources: [wm] },
+  { gene: 'BRAF V600E', categories: ['Mature B cell'], meaning: 'More than 95% of classic hairy cell leukemias carry this variant in the 2026 consensus. Rare classic cases lack it.', next: 'Interpret the result with blood or marrow morphology and immunophenotype. Reassess the differential diagnosis when the findings disagree.', sources: [hcl] },
+]
+const categories = ['All', 'AML', 'MPN', 'MDS', 'CML', 'ALL', 'Mature B cell']
+
 export function MolecularPanelView() {
-  const setCurrentView = useAppStore((state) => state.setCurrentView)
-  const [selectedMutation, setSelectedMutation] = useState<Mutation | null>(null)
-  const [filterDisease, setFilterDisease] = useState<string>('All')
-
-  const diseaseCategories = [
-    'All',
-    'AML',
-    'MPN',
-    'MDS',
-    'CML',
-    'ALL',
-    'Lymphoma',
-  ]
-
-  const filteredMutations =
-    filterDisease === 'All'
-      ? mutations
-      : mutations.filter((m) =>
-          m.disease.some((d) => d.toLowerCase().includes(filterDisease.toLowerCase()))
-        )
-
-  const getPrognosticColor = (prog: string) => {
-    if (prog === 'Favorable') return 'text-green-400'
-    if (prog === 'Poor') return 'text-red-400'
-    return 'text-yellow-400'
-  }
-
+  const [category, setCategory] = useState('All')
   return (
-    <div className="space-y-4 p-4 pb-24 md:pb-6 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => setCurrentView('home')}>
-          <ArrowLeft size={16} className="mr-2" />
-          Back
-        </Button>
-        <div>
-          <h2 className="text-2xl font-bold">Molecular Panel Explorer</h2>
-          <p className="text-sm text-muted-foreground">
-            Key mutations in hematologic malignancies
-          </p>
-        </div>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {diseaseCategories.map((cat) => (
-          <Button
-            key={cat}
-            size="sm"
-            variant={filterDisease === cat ? 'default' : 'outline'}
-            onClick={() => setFilterDisease(cat)}
-          >
-            {cat}
-          </Button>
-        ))}
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {filteredMutations.map((mutation) => (
-          <Card
-            key={mutation.gene}
-            className={`cursor-pointer transition-all hover:shadow-md ${
-              selectedMutation?.gene === mutation.gene ? 'ring-2 ring-primary' : ''
-            }`}
-            onClick={() =>
-              setSelectedMutation(
-                selectedMutation?.gene === mutation.gene ? null : mutation
-              )
-            }
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-base">{mutation.gene}</CardTitle>
-                  <CardDescription className="text-xs">
-                    {mutation.fullName}
-                  </CardDescription>
-                </div>
-                <span
-                  className={`text-xs px-2 py-1 rounded ${getPrognosticColor(
-                    mutation.prognostic
-                  )} bg-accent`}
-                >
-                  {mutation.prognostic}
-                </span>
-              </div>
-            </CardHeader>
-            {selectedMutation?.gene === mutation.gene && (
-              <CardContent className="space-y-3 border-t pt-4">
-                <div>
-                  <span className="font-semibold text-sm">Associated Diseases:</span>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground mt-1">
-                    {mutation.disease.map((d, idx) => (
-                      <li key={idx}>{d}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <span className="font-semibold text-sm">Pathway:</span>
-                  <p className="text-sm text-muted-foreground">{mutation.pathway}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-sm">Clinical Significance:</span>
-                  <p className="text-sm text-muted-foreground">
-                    {mutation.clinicalSignificance}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-semibold text-sm">
-                    Treatment Implications:
-                  </span>
-                  <p className="text-sm text-muted-foreground">
-                    {mutation.treatmentImplications}
-                  </p>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        ))}
-      </div>
-
-      <Card className="bg-blue-500/10 border-blue-500/20">
-        <CardHeader>
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <CardTitle className="text-lg">Clinical Integration</CardTitle>
-              <CardDescription className="mt-2 space-y-2 text-sm">
-                <p>
-                  <strong>MPN Triple-Negative:</strong> ~10-15% of ET/PMF lack JAK2, CALR, MPL. Consider other diagnoses.
-                </p>
-                <p>
-                  <strong>AML Risk Stratification:</strong> Favorable (NPM1+/FLT3-ITD-, core binding factor), Intermediate, Poor (FLT3-ITD, TP53, complex karyotype)
-                </p>
-                <p>
-                  <strong>Targeted Therapy Era:</strong> Many mutations now have specific inhibitors (BCR-ABL→TKI, FLT3→midostaurin, BRAF→vemurafenib)
-                </p>
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
+    <div className="mx-auto max-w-4xl space-y-5 p-4 pb-12 sm:p-6">
+      <LabHeader title="Molecular panels">Use the variant, disease context and treatment setting to decide what a molecular report can support.</LabHeader>
+      <LabPractice module="molecular-panel" cases={cases} />
+      <Card>
+        <ReferenceHeading title="Variant reference">Filter by disease group and open a result to see how it changes the diagnostic workup.</ReferenceHeading>
+        <CardContent className="space-y-4">
+          <div role="group" aria-label="Disease group" className="flex flex-wrap gap-2">{categories.map((label) => <Button key={label} size="sm" variant={category === label ? 'default' : 'outline'} aria-pressed={category === label} onClick={() => setCategory(label)}>{label}</Button>)}</div>
+          <div className="divide-y rounded-lg border px-4">{variants.filter((variant) => category === 'All' || variant.categories.includes(category)).map((variant) => (
+            <details key={variant.gene} className="py-3"><summary className="cursor-pointer font-semibold">{variant.gene}</summary><div className="mt-3 space-y-3 text-sm"><p>{variant.meaning}</p><p><strong>Interpretation.</strong> {variant.next}</p><LabSources items={variant.sources} /></div></details>
+          ))}</div>
+        </CardContent>
       </Card>
     </div>
   )

@@ -1,248 +1,155 @@
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './Card'
+import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import { ArrowLeft, Info } from 'lucide-react'
-import { useAppStore } from './store'
+import { LabHeader, LabPractice, LabSources, type LabCase } from './LabPractice'
 
-interface CellType {
-  id: string
-  name: string
-  description: string
-  size: string
-  nucleus: string
-  cytoplasm: string
-  frequency: string
-  keyFeatures: string[]
+const bloodSource = {
+  title: 'OpenStax · Leukocytes and platelets',
+  url: 'https://openstax.org/books/anatomy-and-physiology-2e/pages/18-4-leukocytes-and-platelets',
+}
+const redCellSource = {
+  title: 'OpenStax · Erythrocytes',
+  url: 'https://openstax.org/books/anatomy-and-physiology-2e/pages/18-3-erythrocytes',
 }
 
-const cellTypes: CellType[] = [
+type Target = [x: number, y: number, diameter: number]
+interface Field {
+  file: string
+  target: Target
+}
+interface Cell {
+  name: string
+  appearance: string
+  clue: string
+  contrast: string
+  atlas: Field
+  challenge: Field
+}
+
+const cells: Cell[] = [
   {
-    id: 'rbc',
-    name: 'Red Blood Cell (Erythrocyte)',
-    description: 'Normal mature RBC - anucleate biconcave disc',
-    size: '7-8 μm diameter',
-    nucleus: 'Absent (anucleate)',
-    cytoplasm: 'Salmon pink with central pallor (1/3 diameter)',
-    frequency: 'Predominant cell type',
-    keyFeatures: [
-      'Central pallor = 1/3 of cell diameter',
-      'Uniform size (normocytic)',
-      'Smooth round shape',
-      'No inclusions in normal state',
-    ],
+    name: 'Erythrocyte',
+    appearance: 'A rounded pink disc with a pale center and no visible nucleus.',
+    clue: 'The thin center of a biconcave red cell transmits more light than its hemoglobin-rich rim.',
+    contrast: 'A platelet is usually much smaller than an erythrocyte and contains stained granules.',
+    atlas: { file: 'LY_112097', target: [77, 40, 24] },
+    challenge: { file: 'SNE_108753', target: [79, 52, 23] },
   },
   {
-    id: 'neutrophil',
-    name: 'Neutrophil (Segmented)',
-    description: 'Mature granulocyte with 2-5 nuclear lobes',
-    size: '12-15 μm',
-    nucleus: '2-5 lobes connected by thin chromatin strands',
-    cytoplasm: 'Pale pink with fine granules',
-    frequency: '40-70% of WBCs',
-    keyFeatures: [
-      '3-5 nuclear lobes (hypersegmentation >5 lobes is abnormal)',
-      'Clumped chromatin',
-      'Fine pink-purple granules',
-      'Most common WBC in adults',
-    ],
+    name: 'Neutrophil',
+    appearance: 'Several dark nuclear lobes are linked by narrow strands. The pale cytoplasm has fine granules.',
+    clue: 'Follow the contour of the segmented nucleus. Mature neutrophils often have two to five lobes.',
+    contrast: 'Eosinophils usually have two lobes and conspicuous coarse granules.',
+    atlas: { file: 'SNE_107907', target: [50, 50, 46] },
+    challenge: { file: 'SNE_102049', target: [50, 50, 46] },
   },
   {
-    id: 'lymphocyte',
-    name: 'Lymphocyte',
-    description: 'Small lymphocyte - most common in circulation',
-    size: '7-10 μm (small), 12-16 μm (large)',
-    nucleus: 'Round, dense chromatin',
-    cytoplasm: 'Scant blue cytoplasm',
-    frequency: '20-40% of WBCs',
-    keyFeatures: [
-      'High nuclear:cytoplasmic ratio',
-      'Deeply basophilic cytoplasm',
-      'Clumped chromatin',
-      'May have occasional azurophilic granules',
-    ],
+    name: 'Small lymphocyte',
+    appearance: 'A round, densely stained nucleus occupies most of the cell. Only a narrow rim of blue cytoplasm is visible.',
+    clue: 'Compare the small amount of cytoplasm with the area occupied by the nucleus.',
+    contrast: 'A monocyte typically has a folded nucleus and a wider rim of gray-blue cytoplasm.',
+    atlas: { file: 'LY_104129', target: [50, 50, 42] },
+    challenge: { file: 'LY_112097', target: [50, 50, 40] },
   },
   {
-    id: 'monocyte',
     name: 'Monocyte',
-    description: 'Largest WBC, precursor to tissue macrophages',
-    size: '15-20 μm',
-    nucleus: 'Kidney-bean or horseshoe shaped, folded',
-    cytoplasm: 'Blue-gray, may have vacuoles and fine granules',
-    frequency: '2-10% of WBCs',
-    keyFeatures: [
-      'Largest circulating WBC',
-      'Folded/indented nucleus',
-      'Ground-glass gray cytoplasm',
-      'May have fine azurophilic granules and vacuoles',
-    ],
+    appearance: 'A large cell with a folded or indented nucleus and abundant gray-blue cytoplasm.',
+    clue: 'Look for a fold in a single nucleus and an irregular cytoplasmic margin. Vacuoles can be visible.',
+    contrast: 'Segmented neutrophils have discrete nuclear lobes linked by thin strands.',
+    atlas: { file: 'MO_114341', target: [50, 50, 67] },
+    challenge: { file: 'MO_120253', target: [50, 50, 57] },
   },
   {
-    id: 'eosinophil',
     name: 'Eosinophil',
-    description: 'Granulocyte with large orange-red granules',
-    size: '12-17 μm',
-    nucleus: 'Bilobed (typically 2 lobes)',
-    cytoplasm: 'Packed with large orange-red granules',
-    frequency: '1-4% of WBCs',
-    keyFeatures: [
-      'Large refractile orange-red granules',
-      'Usually bilobed nucleus',
-      'Granules obscure nucleus',
-      'Associated with allergy and parasites',
-    ],
+    appearance: 'Two prominent nuclear lobes sit in cytoplasm filled with coarse pink-orange granules.',
+    clue: 'Inspect the granules alongside the lobe count. Their exact hue varies with staining.',
+    contrast: 'Basophils have much darker blue-purple granules that may hide parts of the nucleus.',
+    atlas: { file: 'EO_109766', target: [50, 50, 44] },
+    challenge: { file: 'EO_110481', target: [50, 51, 44] },
   },
   {
-    id: 'basophil',
     name: 'Basophil',
-    description: 'Rarest granulocyte with dark purple granules',
-    size: '10-14 μm',
-    nucleus: 'Often obscured by granules',
-    cytoplasm: 'Packed with large dark purple granules',
-    frequency: '0-1% of WBCs',
-    keyFeatures: [
-      'Large dark purple/black granules',
-      'Granules may overlie nucleus',
-      'Least common WBC',
-      'Contains histamine',
-    ],
+    appearance: 'Coarse dark purple granules overlap the nucleus and make its outline hard to trace.',
+    clue: 'Look for densely stained granules scattered across both the cytoplasm and nucleus.',
+    contrast: 'In eosinophils, the granules are typically red-orange and the lobes remain easy to see.',
+    atlas: { file: 'BA_101611', target: [50, 50, 43] },
+    challenge: { file: 'BA_102039', target: [50, 50, 50] },
   },
   {
-    id: 'platelet',
-    name: 'Platelet (Thrombocyte)',
-    description: 'Small anucleate cell fragments for hemostasis',
-    size: '2-4 μm',
-    nucleus: 'Absent (cell fragment)',
-    cytoplasm: 'Light blue with purple granules (granulomere)',
-    frequency: '150-400 × 10⁹/L',
-    keyFeatures: [
-      'Smallest formed element',
-      'Central purple granules',
-      'Pale blue peripheral zone',
-      'Often found in clumps',
-    ],
+    name: 'Platelet',
+    appearance: 'A small purple granular fragment, much smaller than the surrounding pink discs.',
+    clue: 'Use a neighboring red cell as a size reference. Platelets are fragments of megakaryocyte cytoplasm.',
+    contrast: 'A small lymphocyte still has a dense nucleus and is closer in size to a red cell.',
+    atlas: { file: 'LY_112097', target: [15, 47, 12] },
+    challenge: { file: 'SNE_108753', target: [87, 42, 12] },
   },
 ]
 
+function Micrograph({ field, description }: { field: Field; description: string }) {
+  const [x, y, diameter] = field.target
+  return <figure className="mx-auto w-full max-w-[340px]">
+    <div className="relative overflow-hidden rounded-lg border bg-muted">
+      <img src={'/smears/' + field.file + '.jpg'} width={360} height={363} className="block h-auto w-full" alt={description} />
+      <span aria-hidden="true" className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
+        style={{ left: x + '%', top: y + '%', width: diameter + '%', aspectRatio: '1', boxShadow: '0 0 0 1.5px #373339' }} />
+    </div>
+    <figcaption className="mt-2 text-xs text-muted-foreground">
+      Blood film · <a className="underline" href="https://doi.org/10.17632/snkd93bnjr.1" target="_blank" rel="noreferrer">Acevedo et al.</a>
+      {' · '}<a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · target ring added
+    </figcaption>
+  </figure>
+}
+
+// Each set includes the target and two plausible look-alikes in a fixed, varied order.
+const challenges = [
+  { target: 1, options: [4, 1, 3] },
+  { target: 6, options: [6, 2, 0] },
+  { target: 4, options: [5, 1, 4] },
+  { target: 3, options: [2, 3, 1] },
+  { target: 0, options: [6, 0, 2] },
+  { target: 5, options: [5, 4, 1] },
+  { target: 2, options: [6, 3, 2] },
+]
+
+const practice: LabCase[] = challenges.map(({ target, options }, index) => {
+  const cell = cells[target]
+  return {
+    title: 'Unknown blood film ' + (index + 1),
+    history: 'Identify the circled structure. Compare its size with the nearby red cells.',
+    visual: <Micrograph field={cell.challenge} description={'Circled structure in a blood film. ' + cell.appearance} />,
+    report: [], question: 'What is the circled structure?', correct: options.indexOf(target),
+    options: options.map(i => ({ label: cells[i].name, feedback: i === target ? cell.appearance + ' ' + cell.clue : cells[i].appearance })),
+    hint: cell.clue, sources: [target === 0 ? redCellSource : bloodSource],
+  }
+})
+
 export function NormalSmearView() {
-  const setCurrentView = useAppStore((state) => state.setCurrentView)
-  const [selectedCell, setSelectedCell] = useState<CellType | null>(null)
-
-  return (
-    <div className="space-y-4 p-4 pb-24 md:pb-6 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setCurrentView('home')}
-        >
-          <ArrowLeft size={16} className="mr-2" />
-          Back
-        </Button>
-        <div>
-          <h2 className="text-2xl font-bold">Normal Smear Foundations</h2>
-          <p className="text-sm text-muted-foreground">
-            Learn normal blood cell morphology
-          </p>
-        </div>
-      </div>
-
-      <Card className="bg-blue-500/10 border-blue-500/20">
-        <CardHeader>
-          <div className="flex items-start gap-2">
-            <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <CardTitle className="text-lg">Learning Objectives</CardTitle>
-              <CardDescription className="mt-2">
-                • Identify normal blood cells by morphology
-                <br />
-                • Understand normal nuclear and cytoplasmic features
-                <br />
-                • Recognize normal size relationships
-                <br />• Know normal differential percentages
-              </CardDescription>
+  const [section, setSection] = useState<'atlas' | 'practice'>('atlas')
+  const [selected, setSelected] = useState(0)
+  const cell = cells[selected]
+  return <div className="space-y-5">
+    <LabHeader title="Peripheral smear">Use a red cell as a size reference, then examine the nucleus and the granules. Identify seven structures in a second set of blood films.</LabHeader>
+    <div role="group" aria-label="Smear learning mode" className="flex flex-wrap gap-2">
+      <Button size="sm" variant={section === 'atlas' ? 'default' : 'outline'} aria-pressed={section === 'atlas'} onClick={() => setSection('atlas')}>Cell atlas</Button>
+      <Button size="sm" variant={section === 'practice' ? 'default' : 'outline'} aria-pressed={section === 'practice'} onClick={() => setSection('practice')}>Identify unknowns</Button>
+    </div>
+    <section hidden={section !== 'atlas'}>
+      <Card><CardHeader><CardTitle className="text-xl">Compare seven structures</CardTitle></CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Atlas structure">
+            {cells.map((item, i) => <Button size="sm" key={item.name} aria-pressed={i === selected} variant={i === selected ? 'default' : 'outline'} onClick={() => setSelected(i)}>{item.name}</Button>)}
+          </div>
+          <div className="grid items-center gap-6 md:grid-cols-2">
+            <Micrograph field={cell.atlas} description={cell.name + '. ' + cell.appearance} />
+            <div className="space-y-3" aria-live="polite">
+              <h2 className="text-xl font-semibold">{cell.name}</h2><p>{cell.appearance}</p>
+              <p className="text-sm">{cell.clue}</p><p className="text-sm text-muted-foreground">{cell.contrast}</p>
+              <LabSources items={[selected === 0 ? redCellSource : bloodSource]} />
             </div>
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {cellTypes.map((cell) => (
-          <Card
-            key={cell.id}
-            className={`cursor-pointer transition-all hover:shadow-lg ${
-              selectedCell?.id === cell.id ? 'ring-2 ring-primary' : ''
-            }`}
-            onClick={() =>
-              setSelectedCell(selectedCell?.id === cell.id ? null : cell)
-            }
-          >
-            <CardHeader>
-              <CardTitle className="text-lg">{cell.name}</CardTitle>
-              <CardDescription>{cell.description}</CardDescription>
-            </CardHeader>
-            {selectedCell?.id === cell.id && (
-              <CardContent className="space-y-3 border-t pt-4">
-                <div>
-                  <span className="font-semibold text-sm">Size:</span>
-                  <p className="text-sm text-muted-foreground">{cell.size}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-sm">Nucleus:</span>
-                  <p className="text-sm text-muted-foreground">
-                    {cell.nucleus}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-semibold text-sm">Cytoplasm:</span>
-                  <p className="text-sm text-muted-foreground">
-                    {cell.cytoplasm}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-semibold text-sm">
-                    Normal Frequency:
-                  </span>
-                  <p className="text-sm text-muted-foreground">
-                    {cell.frequency}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-semibold text-sm">Key Features:</span>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-1">
-                    {cell.keyFeatures.map((feature, idx) => (
-                      <li key={idx}>{feature}</li>
-                    ))}
-                  </ul>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        ))}
-      </div>
-
-      <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-lg">Clinical Pearls</CardTitle>
-          <CardDescription className="mt-2 space-y-2">
-            <p>
-              <strong>Size Reference:</strong> Use RBC (7-8 μm) as your ruler.
-              Small lymphocyte ≈ RBC size. Monocyte is 2× RBC size.
-            </p>
-            <p>
-              <strong>Nuclear:Cytoplasmic Ratio:</strong> Lymphocytes have high
-              N:C. Monocytes have low N:C.
-            </p>
-            <p>
-              <strong>Chromatin Pattern:</strong> Neutrophil = clumped.
-              Lymphocyte = smudged/clumped. Monocyte = lacy/reticular.
-            </p>
-            <p>
-              <strong>Toxic Changes (Abnormal):</strong> Döhle bodies, toxic
-              granulation, vacuoles indicate reactive/infectious process.
-            </p>
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    </div>
-  )
+    </section>
+    <section hidden={section !== 'practice'} aria-label="Smear practice"><LabPractice module="normal-smear" cases={practice} /></section>
+  </div>
 }
