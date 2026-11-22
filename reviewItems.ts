@@ -165,11 +165,11 @@ export const reviewItems: ReviewItem[] = [
     prompt: 'An adult receiving all-trans retinoic acid for acute promyelocytic leukemia develops abrupt weight gain, hypoxemia and new bilateral lung infiltrates. Alongside assessment for infection and other causes, which treatment complication needs urgent action?',
     options: [
       { text: 'Iron overload from transfusions', feedback: 'Transfusional iron overload develops with cumulative exposure. The rapid onset of weight gain and respiratory compromise during induction raises concern for differentiation syndrome.' },
-      { text: 'Differentiation syndrome', feedback: 'The combination of fluid retention and pulmonary findings during induction raises concern for differentiation syndrome. ELN recommends immediate dexamethasone at clinical suspicion while other causes are evaluated.' },
+      { text: 'Differentiation syndrome', feedback: 'The combination of fluid retention and pulmonary findings during induction raises concern for differentiation syndrome. Clinical suspicion warrants immediate dexamethasone while the team evaluates other causes.' },
       { text: 'Molecular relapse', feedback: 'Acute respiratory compromise alone does not establish relapse. The timing during differentiating therapy and rapid fluid accumulation point to differentiation syndrome.' },
     ],
     answer: 1,
-    source: { title: 'European LeukemiaNet · Management of acute promyelocytic leukemia', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC6509567/' },
+    source: { title: 'Brazilian hematology consensus · APL differentiation syndrome (2024)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11451342/' },
   },
   {
     id: 'cases-pv-thrombosis-history',
@@ -181,6 +181,6 @@ export const reviewItems: ReviewItem[] = [
       { text: 'Prior thrombosis places her in the high-risk group', feedback: 'A thrombotic history is a high-risk feature at any adult age. This affects the discussion of cytoreductive therapy even when hematocrit is controlled.' },
     ],
     answer: 2,
-    source: { title: 'Tefferi and Barbui · Polycythemia vera, 2024 update', url: 'https://pubmed.ncbi.nlm.nih.gov/37357958/' },
+    source: { title: 'Tremblay et al. · Diagnosis and treatment of polycythemia vera (2025)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11921015/' },
   },
 ]
